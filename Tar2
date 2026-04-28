@@ -1,3 +1,5 @@
+print ("alt.uh on tiktok")
+
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
