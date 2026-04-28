@@ -1,30 +1,243 @@
-const express = require('express');
-const axios = require('axios');
-const app = express();
-app.use(express.json());
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
-app.post('/generate', async (req, res) => {
-    const userPrompt = req.body.prompt;
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-    try {
-        const aiResponse = await axios.post('https://api.openai.com/v1/chat/completions', {
-            model: "gpt-4o",
-            messages: [{
-                role: "system", 
-                content: "You are a Roblox Luau expert. Return ONLY raw code, no markdown, no explanations."
-            }, {
-                role: "user", 
-                content: `Write a Roblox script for: ${userPrompt}`
-            }]
-        }, {
-            headers: { 'Authorization': `Bearer YOUR_API_KEY` }
-        });
 
-        const code = aiResponse.data.choices[0].message.content;
-        res.json({ generated_code: code });
-    } catch (err) {
-        res.status(500).send("AI Error");
-    }
-});
+local rapidStates = {}
 
-app.listen(3000, () => console.log("Proxy Running"));
+
+if playerGui:FindFirstChild("TartarProductHub") then
+    playerGui.TartarProductHub:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TartarProductHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- // Theme Configuration
+local ACCENT = Color3.fromRGB(0, 160, 255)
+local BG_MAIN = Color3.fromRGB(15, 15, 20)
+local BG_SECONDARY = Color3.fromRGB(22, 22, 28)
+
+-- // Helper Functions
+local function createCorner(parent, r)
+    local c = Instance.new("UICorner", parent)
+    c.CornerRadius = UDim.new(0, r or 8)
+    return c
+end
+
+local function createStroke(parent, color)
+    local s = Instance.new("UIStroke", parent)
+    s.Color = color or Color3.fromRGB(45, 45, 55)
+    s.Thickness = 1
+    return s
+end
+
+-- // Main Frame
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 480, 0, 350)
+main.Position = UDim2.new(0.5, -240, 0.5, -175)
+main.BackgroundColor3 = BG_MAIN
+main.Parent = screenGui
+createCorner(main, 10)
+createStroke(main, ACCENT)
+
+-- // Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "product spoofer :P"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+local padding = Instance.new("UIPadding", title)
+padding.PaddingLeft = UDim.new(0, 15)
+
+-- // Close Button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 20
+closeBtn.Parent = main
+createCorner(closeBtn, 6)
+createStroke(closeBtn, Color3.fromRGB(80, 30, 30))
+
+closeBtn.MouseButton1Click:Connect(function()
+    for id, _ in pairs(rapidStates) do rapidStates[id] = false end
+    screenGui:Destroy()
+end)
+
+-- // Product List Container
+local listFrame = Instance.new("ScrollingFrame")
+listFrame.Size = UDim2.new(1, -30, 1, -110)
+listFrame.Position = UDim2.new(0, 15, 0, 50)
+listFrame.BackgroundColor3 = BG_SECONDARY
+listFrame.BorderSizePixel = 0
+listFrame.ScrollBarThickness = 2
+listFrame.Parent = main
+createCorner(listFrame, 6)
+
+local layout = Instance.new("UIListLayout", listFrame)
+layout.Padding = UDim.new(0, 5)
+Instance.new("UIPadding", listFrame).PaddingTop = UDim.new(0, 5)
+
+-- // Spoofer Logic
+local function spoofPurchase(id)
+    pcall(function()
+        MarketplaceService:SignalPromptProductPurchaseFinished(player.UserId, id, true)
+    end)
+end
+
+-- // Function to add item to List
+local function addProductToList(id)
+    if listFrame:FindFirstChild(tostring(id)) then return end
+    rapidStates[id] = false
+    
+    local name = "Loading..."
+    local success, info = pcall(function() return MarketplaceService:GetProductInfo(id, Enum.InfoType.Product) end)
+    if success and info then name = info.Name else name = "Unknown Product" end
+
+    local entry = Instance.new("Frame")
+    entry.Name = tostring(id)
+    entry.Size = UDim2.new(1, -10, 0, 40)
+    entry.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    entry.Parent = listFrame
+    createCorner(entry, 4)
+
+    local prodName = Instance.new("TextLabel")
+    prodName.Size = UDim2.new(0.5, 0, 1, 0)
+    prodName.Position = UDim2.new(0, 10, 0, 0)
+    prodName.BackgroundTransparency = 1
+    prodName.Text = name .. " (" .. id .. ")"
+    prodName.TextColor3 = Color3.fromRGB(200, 200, 200)
+    prodName.TextSize = 11
+    prodName.Font = Enum.Font.Gotham
+    prodName.TextXAlignment = Enum.TextXAlignment.Left
+    prodName.Parent = entry
+
+    -- // Standard Spoof Button
+    local runBtn = Instance.new("TextButton")
+    runBtn.Size = UDim2.new(0, 65, 0, 26)
+    runBtn.Position = UDim2.new(1, -145, 0.5, -13)
+    runBtn.BackgroundColor3 = ACCENT
+    runBtn.Text = "SPOOF"
+    runBtn.Font = Enum.Font.GothamBold
+    runBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    runBtn.TextSize = 10
+    runBtn.Parent = entry
+    createCorner(runBtn, 4)
+
+    -- // Rapid Toggle Button (Added)
+    local rapidBtn = Instance.new("TextButton")
+    rapidBtn.Size = UDim2.new(0, 65, 0, 26)
+    rapidBtn.Position = UDim2.new(1, -75, 0.5, -13)
+    rapidBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    rapidBtn.Text = "AUTO"
+    rapidBtn.Font = Enum.Font.GothamBold
+    rapidBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    rapidBtn.TextSize = 10
+    rapidBtn.Parent = entry
+    createCorner(rapidBtn, 4)
+    createStroke(rapidBtn, Color3.fromRGB(60, 60, 70))
+
+    runBtn.MouseButton1Click:Connect(function()
+        spoofPurchase(id)
+        runBtn.Text = "FINISHED"
+        task.wait(0.5)
+        runBtn.Text = "SPOOF"
+    end)
+
+    rapidBtn.MouseButton1Click:Connect(function()
+        rapidStates[id] = not rapidStates[id]
+        
+        if rapidStates[id] then
+            rapidBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            rapidBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            rapidBtn.Text = "STOP"
+            
+            task.spawn(function()
+                while rapidStates[id] do
+                    spoofPurchase(id)
+                    task.wait(0.05) -- Rapid Speed
+                end
+            end)
+        else
+            rapidBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            rapidBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            rapidBtn.Text = "AUTO"
+        end
+    end)
+end
+
+-- // Auto-Detecting Games Products
+MarketplaceService.PromptProductPurchaseRequested:Connect(function(plr, id)
+    if plr == player then
+        addProductToList(id)
+    end
+end)
+
+-- // Manual Input (Footer)
+local inputField = Instance.new("TextBox")
+inputField.Size = UDim2.new(1, -120, 0, 35)
+inputField.Position = UDim2.new(0, 15, 1, -45)
+inputField.BackgroundColor3 = BG_SECONDARY
+inputField.PlaceholderText = "Enter Product ID..."
+inputField.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputField.Text = ""
+inputField.Parent = main
+createCorner(inputField, 6)
+
+local addBtn = Instance.new("TextButton")
+addBtn.Size = UDim2.new(0, 90, 0, 35)
+addBtn.Position = UDim2.new(1, -105, 1, -45)
+addBtn.BackgroundColor3 = ACCENT
+addBtn.Text = "ADD ID"
+addBtn.Font = Enum.Font.GothamBold
+addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+addBtn.Parent = main
+createCorner(addBtn, 6)
+
+addBtn.MouseButton1Click:Connect(function()
+    local id = tonumber(inputField.Text)
+    if id then
+        addProductToList(id)
+        inputField.Text = ""
+    end
+end)
+
+-- // Basic Dragging
+local dragStart, startPos, dragging
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+end)
+
+
+
+
+--Script by AsbakBaliGokGok, if u see other scripts with my branding its fake
+--REAL ONE IS THE LOADSTRING
